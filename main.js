@@ -1,7 +1,31 @@
 // ==================== Electron 主进程 ====================
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// 构建应用菜单
+function buildMenu() {
+  const template = [
+    {
+      label: '文件',
+      submenu: [
+        { label: '退出', accelerator: 'Alt+F4', role: 'quit' }
+      ]
+    },
+    {
+      label: '查看',
+      submenu: [
+        { label: '重新加载', accelerator: 'CmdOrCtrl+R', role: 'reload' },
+        { type: 'separator' },
+        { label: '开发者工具', accelerator: 'F12', click: () => {
+          const win = BrowserWindow.getFocusedWindow();
+          if (win) win.webContents.toggleDevTools();
+        }}
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
 
 // 配置文件路径（存储在 userData 目录下）
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
@@ -194,18 +218,18 @@ function createWindow() {
     title: '📚 NovelGen - AI小说生成器',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,   // 安全：隔离渲染进程
-      nodeIntegration: false     // 安全：不暴露 Node.js
+      contextIsolation: true,
+      nodeIntegration: false
     }
   });
 
   win.loadFile('public/index.html');
-
-  // 开发时可按 F12 打开 DevTools
-  // win.webContents.openDevTools();
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  buildMenu();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   app.quit();

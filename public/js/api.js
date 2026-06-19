@@ -142,12 +142,33 @@ const API = {
     } catch (e) { return { success: false, error: e.message }; }
   },
 
+  async reorderVolumes(pid, orderedIds) {
+    try {
+      const project = await this._getProject(pid);
+      const volMap = new Map(project.volumes.map(v => [v.id, v]));
+      project.volumes = orderedIds.map(id => volMap.get(id)).filter(Boolean);
+      await this._saveProject(project);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
   async deleteVolume(pid, vid) {
     try {
       const project = await this._getProject(pid);
       project.volumes = project.volumes.filter(v => v.id !== vid);
       await this._saveProject(project);
       return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
+  async renameVolume(pid, vid, newTitle) {
+    try {
+      const project = await this._getProject(pid);
+      const vol = project.volumes.find(v => v.id === vid);
+      if (!vol) return { success: false, error: '卷不存在' };
+      vol.title = newTitle;
+      await this._saveProject(project);
+      return { success: true, data: vol };
     } catch (e) { return { success: false, error: e.message }; }
   },
 
@@ -204,6 +225,47 @@ const API = {
     } catch (e) { return { success: false, error: e.message }; }
   },
 
+  async renameChapter(pid, vid, cid, newTitle) {
+    try {
+      const project = await this._getProject(pid);
+      const vol = project.volumes.find(v => v.id === vid);
+      if (!vol) return { success: false, error: '卷不存在' };
+      const ch = vol.chapters.find(c => c.id === cid);
+      if (!ch) return { success: false, error: '章不存在' };
+      ch.title = newTitle;
+      await this._saveProject(project);
+      return { success: true, data: ch };
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
+  async reorderChapters(pid, vid, orderedIds) {
+    try {
+      const project = await this._getProject(pid);
+      const vol = project.volumes.find(v => v.id === vid);
+      if (!vol) return { success: false, error: '卷不存在' };
+      const chMap = new Map(vol.chapters.map(c => [c.id, c]));
+      vol.chapters = orderedIds.map(id => chMap.get(id)).filter(Boolean);
+      await this._saveProject(project);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
+  async moveChapter(pid, fromVid, chId, toVid, toIndex) {
+    try {
+      const project = await this._getProject(pid);
+      const fromVol = project.volumes.find(v => v.id === fromVid);
+      if (!fromVol) return { success: false, error: '源卷不存在' };
+      const chIdx = fromVol.chapters.findIndex(c => c.id === chId);
+      if (chIdx < 0) return { success: false, error: '章不存在' };
+      const [ch] = fromVol.chapters.splice(chIdx, 1);
+      const toVol = project.volumes.find(v => v.id === toVid);
+      if (!toVol) return { success: false, error: '目标卷不存在' };
+      toVol.chapters.splice(toIndex, 0, ch);
+      await this._saveProject(project);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+  },
+
   // ========== 设定操作 ==========
 
   async saveSettings(pid, settings) {
@@ -222,7 +284,7 @@ const API = {
       if (!apiKey) return { success: false, error: '请先设置 API Key' };
 
       const body = {
-        model: model || 'deepseek-chat',
+        model: model || 'deepseek-v4-flash',
         messages,
         temperature: 0.8,
         max_tokens: 4096,
@@ -249,6 +311,60 @@ const API = {
       return { success: true, data: data.choices[0].message, fullResponse: data };
     } catch (e) {
       return { success: false, error: e.message };
+    }
+  },
+
+  // 流式对话：返回 async generator，逐块 yield SSE 数据
+  async *chatStream(apiKey, messages, model, tools, tool_choice, signal) {
+    if (!apiKey) throw new Error('请先设置 API Key');
+
+    const body = {
+      model: model || 'deepseek-v4-flash',
+      messages,
+      temperature: 0.8,
+      max_tokens: 4096,
+      stream: true
+    };
+    if (tools && tools.length > 0) {
+      body.tools = tools;
+      if (tool_choice) body.tool_choice = tool_choice;
+    }
+
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        const jsonStr = trimmed.slice(6);
+        if (jsonStr === '[DONE]') return;
+        try {
+          yield JSON.parse(jsonStr);
+        } catch (e) { /* 忽略解析错误 */ }
+      }
     }
   },
 };

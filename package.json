@@ -19,19 +19,16 @@
       "main.js",
       "preload.js",
       "public/**/*",
+      "assets/**/*",
       "node_modules/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "projects",
-        "to": "projects"
-      }
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png",
@@ -40,7 +37,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "include": "installer.nsh"
     }
   },
   "dependencies": {
@@ -50,6 +48,7 @@
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "sharp": "^0.35.2"
   }
 }

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FACC15"/>
+      <stop offset="100%" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景圆角矩形 -->
+  <rect x="16" y="16" width="224" height="224" rx="48" ry="48" fill="url(#bg)"/>
+
+  <!-- 书本主体 -->
+  <rect x="52" y="52" width="108" height="152" rx="4" ry="4" fill="white" opacity="0.95"/>
+  <!-- 书脊 -->
+  <line x1="106" y1="56" x2="106" y2="200" stroke="#4F46E5" stroke-width="3" opacity="0.3"/>
+  <!-- 文字线条 -->
+  <rect x="64" y="72" width="34" height="6" rx="3" fill="#4F46E5" opacity="0.4"/>
+  <rect x="64" y="86" width="38" height="6" rx="3" fill="#4F46E5" opacity="0.3"/>
+  <rect x="64" y="100" width="30" height="6" rx="3" fill="#4F46E5" opacity="0.25"/>
+  <rect x="64" y="114" width="36" height="6" rx="3" fill="#4F46E5" opacity="0.3"/>
+  <rect x="64" y="128" width="28" height="6" rx="3" fill="#4F46E5" opacity="0.2"/>
+  <!-- 右页文字 -->
+  <rect x="114" y="72" width="38" height="6" rx="3" fill="#7C3AED" opacity="0.35"/>
+  <rect x="114" y="86" width="34" height="6" rx="3" fill="#7C3AED" opacity="0.25"/>
+  <rect x="114" y="100" width="40" height="6" rx="3" fill="#7C3AED" opacity="0.3"/>
+  <rect x="114" y="114" width="30" height="6" rx="3" fill="#7C3AED" opacity="0.2"/>
+
+  <!-- AI 星型标记 -->
+  <polygon points="196,100 200,114 214,114 203,122 207,136 196,128 185,136 189,122 178,114 192,114"
+           fill="url(#spark)" stroke="white" stroke-width="1.5"/>
+
+  <!-- 笔尖图标 -->
+  <path d="M68,170 L76,170 L84,162 L76,154 L68,162 Z" fill="white" opacity="0.8"/>
+  <line x1="84" y1="162" x2="96" y2="150" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+</svg>
