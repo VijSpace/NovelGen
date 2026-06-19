@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 NovelGen - AI小说生成器</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ========== 顶部导航栏 ========== -->
+<header id="topBar">
+  <div class="top-left">
+    <span class="logo">📚 NovelGen</span>
+    <select id="projectSelect" class="project-select">
+      <option value="">选择项目...</option>
+    </select>
+    <button id="btnNewProject" class="btn btn-sm btn-primary" title="新建项目">＋ 新建</button>
+    <button id="btnEditSysPrompt" class="btn btn-sm" title="编辑AI角色提示词">📝 提示词</button>
+    <button id="btnSettings" class="btn btn-sm" title="设置数据路径和自动保存">⚙️ 设置</button>
+    <button id="btnImport" class="btn btn-sm btn-accent" title="导入文本并自动提取设定">📥 导入</button>
+    <button id="btnDeleteProject" class="btn btn-sm" title="删除当前项目" style="display:none;color:var(--accent)">🗑 删除</button>
+  </div>
+  <div class="top-right">
+    <span class="status-text" id="saveStatus">💾 已保存</span>
+    <button id="btnExport" class="btn btn-sm" title="导出为文本">📥 导出</button>
+  </div>
+</header>
+
+<!-- ========== 主体三栏布局 ========== -->
+<div id="mainContainer">
+
+  <!-- 左栏：小说导航树 -->
+  <aside id="leftPanel" class="panel">
+    <div class="panel-header">
+      <h3>📖 目录</h3>
+    </div>
+    <div id="novelTree" class="novel-tree">
+      <div class="empty-hint">请先创建或选择一个项目</div>
+    </div>
+  </aside>
+
+  <div class="panel-splitter" id="splitterLeft"></div>
+
+  <!-- 中栏：阅读/编辑区 + 设定区 -->
+  <main id="centerPanel" class="panel">
+    <div class="panel-tabs">
+      <button class="tab-btn active" data-tab="novelView">📝 正文</button>
+      <button class="tab-btn" data-tab="settingsView">⚙️ 设定</button>
+    </div>
+
+    <div id="novelView" class="tab-content active">
+      <div id="novelViewHeader" class="novel-view-header">
+        <span class="chapter-label">请从左侧选择章节</span>
+      </div>
+      <div id="novelViewToolbar" class="novel-view-toolbar" style="display:none">
+        <input type="text" id="chapterTitle" class="chapter-title-input" placeholder="章节标题">
+        <span id="chapterWordCount" class="word-count">0字</span>
+        <button id="btnSaveChapter" class="btn btn-sm btn-primary">💾 保存</button>
+        <button id="btnUndo" class="btn btn-sm" title="撤销 (Ctrl+Z)">↩ 撤销</button>
+        <button id="btnRedo" class="btn btn-sm" title="重做 (Ctrl+Shift+Z)">↪ 重做</button>
+        <button id="btnSendToAgent" class="btn btn-sm btn-accent" title="发送到Agent进行修改">🤖 AI改写</button>
+      </div>
+      <div id="chapterPromptBar" class="chapter-prompt-bar" style="display:none">
+        <div class="prompt-toggle" id="btnPromptToggle">
+          <span>📝 精确提示</span>
+          <span class="prompt-arrow">▶</span>
+        </div>
+        <div class="prompt-panel" id="promptPanel">
+          <textarea id="chapterPrompt" class="chapter-prompt-input" placeholder="输入本章精确提示，AI将据此生成正文..." rows="4"></textarea>
+          <button id="btnFillChat" class="btn btn-sm prompt-fill-btn">📤 填入AI输入框</button>
+        </div>
+      </div>
+      <textarea id="chapterEditor" class="chapter-editor" placeholder="在此编辑章节内容...&#10;&#10;提示：选中文字后可使用 AI 改写功能" style="display:none"></textarea>
+      <div id="chapterPreview" class="chapter-preview empty">请从左侧选择章节</div>
+    </div>
+
+    <!-- 设定区 -->
+    <div id="settingsView" class="tab-content">
+      <div class="settings-sidebar">
+        <div class="settings-nav" id="settingsNav">
+          <button class="setting-nav-btn active" data-setting="overall">📋 总设定</button>
+          <button class="setting-nav-btn" data-setting="volumeArchitecture">📐 分卷架构</button>
+          <button class="setting-nav-btn" data-setting="characters">👤 角色设定</button>
+        </div>
+        <div class="settings-nav-add">
+          <button class="btn btn-sm" id="btnAddCustomSetting" style="width:100%;margin-top:6px">＋ 添加设定分类</button>
+        </div>
+      </div>
+      <div class="settings-content" id="settingsContent">
+        <div class="empty-hint">请先创建或选择一个项目</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="panel-splitter" id="splitterRight"></div>
+
+  <!-- 右栏：Agent 区 -->
+  <aside id="rightPanel" class="panel">
+    <div class="panel-header">
+      <h3>🤖 AI 助手</h3>
+      <span style="margin-left:auto;display:flex;gap:2px">
+        <button class="btn btn-xs" id="btnToggleSessions" title="会话列表" style="color:var(--text-muted);font-size:14px">💬</button>
+        <button class="btn btn-xs" id="btnNewChat" title="新建会话" style="color:var(--text-muted);font-size:12px">＋</button>
+      </span>
+    </div>
+
+    <div id="sessionList" class="session-list" style="display:none"></div>
+
+    <div id="chatMessages" class="chat-messages">
+      <div class="chat-welcome">
+        <p>👋 你好！我是你的 AI 写作助手</p>
+        <p>在左侧选择章节并填入「精确提示」后，我可以帮你生成或改写内容</p>
+        <p>你也可以直接让我修改选中的文本段落</p>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <div class="chat-input-area-inner">
+        <div class="chat-input-resizer" id="chatInputResizer"></div>
+        <textarea id="chatInput" class="chat-input" placeholder="输入你的写作需求..." rows="3"></textarea>
+        <div class="chat-input-actions">
+          <div class="chat-config-row">
+            <select id="modelSelect" class="model-select">
+              <option value="deepseek-chat">DeepSeek Pro</option>
+              <option value="deepseek-chat">DeepSeek Flash</option>
+            </select>
+            <div class="api-key-dropdown" id="apiKeyDropdown">
+              <button class="btn btn-sm api-key-toggle" id="btnApiKeyToggle">🔑 API Key ▾</button>
+              <div class="api-key-panel" id="apiKeyPanel" style="display:none">
+                <input type="password" id="apiKeyInput" class="api-key-input" placeholder="输入 DeepSeek API Key">
+                <button id="btnSaveApiKey" class="btn btn-sm btn-primary">保存</button>
+                <span id="apiKeyStatus" class="api-key-status"></span>
+              </div>
+            </div>
+          </div>
+          <label class="context-toggle" title="附带当前项目设定作为上下文">
+            <input type="checkbox" id="chkWithSettings" checked> 📎 当前设定
+          </label>
+          <label class="context-toggle" title="附带当前章节作为上下文">
+            <input type="checkbox" id="chkWithChapter" checked> 📎 当前章节
+          </label>
+          <label class="context-toggle" title="附带全书所有章节作为上下文">
+            <input type="checkbox" id="chkWithBook"> 📎 全书
+          </label>
+          <button id="btnSend" class="btn btn-primary">发送</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ========== 自定义弹窗 ========== -->
+<div id="modalOverlay" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<!-- ========== AI提示词编辑弹窗 ========== -->
+<div id="sysPromptOverlay" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:650px">
+    <div class="modal-title">📝 编辑 AI 角色提示词</div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:6px">定义AI扮演的角色、写作风格和核心原则，将在每次发送消息时作为System Prompt发送给AI</p>
+      <textarea id="sysPromptEditor" rows="14" style="width:100%;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border-light);border-radius:4px;padding:10px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" id="btnSysPromptCancel">取消</button>
+      <button class="btn btn-sm" id="btnSysPromptReset">🔄 恢复默认</button>
+      <button class="btn btn-sm btn-primary" id="btnSysPromptSave">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 右键菜单 ========== -->
+<div id="ctxMenu" class="ctx-menu" style="display:none"></div>
+
+<!-- ========== 导入弹窗 ========== -->
+<div id="importOverlay" class="modal-overlay" style="display:none">
+  <div class="import-dialog">
+    <div class="import-header">
+      <h3>📥 导入小说文本</h3>
+      <button class="btn btn-xs import-close" id="btnImportClose">✕</button>
+    </div>
+    <div class="import-body">
+      <div id="importStep1" class="import-step active">
+        <div class="import-dropzone" id="importDropzone">
+          <div class="dropzone-icon">📂</div>
+          <p>拖拽 .txt 文件到此处，或点击选择</p>
+          <input type="file" id="importFileInput" accept=".txt,.md" style="display:none">
+        </div>
+      </div>
+      <div id="importStep2" class="import-step" style="display:none">
+        <p style="margin-bottom:8px;font-weight:600">📄 文件预览</p>
+        <div class="import-text-preview" id="importTextPreview"></div>
+      </div>
+      <div id="importStep3" class="import-step" style="display:none">
+        <p style="margin-bottom:8px;font-weight:600">✅ 导入结果</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">将从文本中提取卷和章结构，并导入到当前项目中</p>
+        <div id="importResult"></div>
+      </div>
+    </div>
+    <div class="import-footer">
+      <button class="btn btn-sm" id="btnImportCancel">取消</button>
+      <button class="btn btn-sm" id="btnImportBack" style="display:none">上一步</button>
+      <button class="btn btn-sm btn-primary" id="btnImportNext">下一步</button>
+      <button class="btn btn-sm btn-primary" id="btnImportApply" style="display:none">应用导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 脚本加载 ========== -->
+<script src="js/utils.js"></script>
+<script src="js/db.js"></script>
+<script src="js/api.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/novelTree.js"></script>
+<script src="js/agent.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+node_modules/
+release/
+projects/
+.DS_Store
+*.log
